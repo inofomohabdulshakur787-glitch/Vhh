@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vesmos Quantum Hardware CAD Engine v6 Ultra-PRO Max</title>
+  <style>
+    :root {
+      --bg-dark: #02040a;
+      --panel-bg: #090d16;
+      --accent-blue: #2563eb;
+      --accent-glow: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --text-main: #f8fafc;
+      --text-muted: #475569;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+    .workspace-layout {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      flex-direction: row;
+    }
+    .viewport-stage {
+      flex: 1;
+      position: relative;
+      height: 100%;
+      background: radial-gradient(circle at center, #0f172a 0%, #02040a 100%);
+    }
+    canvas#canvas3d {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+    .control-panel {
+      width: 420px;
+      height: 100%;
+      background-color: var(--panel-bg);
+      border-left: 1px solid #1e293b;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      gap: 18px;
+      overflow-y: auto;
+      z-index: 10;
+      box-shadow: -10px 0 30px rgba(0,0,0,0.7);
+    }
+    h2 { font-size: 1.25rem; letter-spacing: 0.05em; color: #60a5fa; text-transform: uppercase; }
+    h3 { font-size: 0.8rem; letter-spacing: 0.05em; color: var(--accent-cyan); text-transform: uppercase; margin-bottom: 8px; }
+    .control-group {
+      background: #04070e;
+      border: 1px solid #1e294b;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    label { display: block; font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; margin-bottom: 8px; font-weight: 700; letter-spacing: 0.05em; }
+    select, textarea, input[type="file"] {
+      width: 100%;
+      background: #010205;
+      border: 1px solid #3b82f6;
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    textarea { height: 120px; resize: none; border-color: #1e294b; }
+    textarea:focus { border-color: var(--accent-glow); }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
+    button {
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      transition: all 0.2s ease-in-out;
+      letter-spacing: 0.05em;
+    }
+    button:hover { background: #1d4ed8; box-shadow: 0 0 12px rgba(59,130,246,0.4); }
+    button.success { background: var(--success); }
+    button.success:hover { background: #059669; box-shadow: 0 0 12px rgba(16,185,129,0.4); }
+    button.warning { background: var(--warning); color: #02040a; }
+    button.warning:hover { background: #d97706; box-shadow: 0 0 12px rgba(245,158,11,0.4); }
+    button.danger { background: var(--danger); }
+    button.danger:hover { background: #dc2626; box-shadow: 0 0 12px rgba(239,68,68,0.4); }
+    button.secondary { background: #334155; }
+    button.secondary:hover { background: #475569; }
+    button.toggle-btn { background: #111827; border: 1px solid #1e294b; color: #94a3b8; }
+    button.toggle-btn.active { background: var(--accent-cyan); color: #020408; border-color: #22d3ee; }
+    
+    .hud-display {
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: #34d399;
+      line-height: 1.5;
+    }
+    .screen-tag {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(2, 4, 8, 0.9);
+      border: 1px solid #3b82f6;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #60a5fa;
+      pointer-events: none;
+      z-index: 25;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .telemetry-overlay {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(2, 4, 8, 0.85);
+      border: 1px solid #1e294b;
+      padding: 14px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      pointer-events: none;
+      z-index: 25;
+      line-height: 1.5;
+    }
+    #phone-screen-buffer { display: none; }
+    .upload-area {
+      border: 2px dashed #3b82f6;
+      padding: 18px;
+      text-align: center;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #040712;
+      transition: background 0.2s;
+    }
+    .upload-area:hover { background: #0c1530; }
+
+    .slider-row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 10px; }
+    .slider-row span { font-size: 0.75rem; font-family: monospace; color: #94a3b8; width: 110px; }
+    input[type="range"] { flex: 1; accent-color: var(--accent-glow); }
+
+    #btStatus { font-weight: bold; color: #94a3b8; }
+
+    @media (max-width: 768px) {
+      .workspace-layout { flex-direction: column; }
+      .viewport-stage { height: 40vh; flex: none; }
+      .control-panel { width: 100vw; height: 60vh; flex: none; border-left: none; }
+    }
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.166.0/build/three.webgpu.js",
+        "three/addons/": "https://unpkg.com/three@0.166.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <canvas id="phone-screen-buffer" width="1024" height="2048"></canvas>
+
+  <div class="workspace-layout">
+    <div class="viewport-stage">
+      <div id="genreDisplayScreenTag" class="screen-tag">CAD PIPELINE: INITIALIZING CORE</div>
+      <div id="telemetryOverlay" class="telemetry-overlay">
+        <strong>[DIAGNOSTIC MATRIX]</strong><br>
+        Vertices: -- | Faces: --<br>
+        Displacement Vol: -- cm³
+      </div>
+      <canvas id="canvas3d"></canvas>
+    </div>
+
+    <div class="control-panel">
+      <div>
+        <h2>Vesmos CAD Engine v6</h2>
+        <p style="font-size:0.75rem; color:#64748b; margin-top:2px;">Quantum Wireless Core Integration Module</p>
+      </div>
+
+      <!-- Quantum Wireless Bluetooth Section -->
+      <div class="control-group">
+        <h3>Quantum Wireless Core</h3>
+        <label>Bluetooth Physical Interface Link</label>
+        <div class="btn-row">
+          <button id="btnPairBT" class="warning">Pair Phone</button>
+          <button id="btnDisconnectBT" class="secondary">Disconnect</button>
+        </div>
+        <div style="margin-top: 10px; font-family: monospace; font-size: 0.75rem;">
+          BT Status: <span id="btStatus">Offline (Ready)</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="deviceSelector">Target Hardware Geometry Profile</label>
+        <select id="deviceSelector">
+          <option value="iphone_17_promax">01. Apple iPhone 17 Pro Max</option>
+          <option value="iphone_17_pro">02. Apple iPhone 17 Pro</option>
+          <option value="iphone_16_promax" selected>03. Apple iPhone 16 Pro Max</option>
+          <option value="iphone_16_pro">04. Apple iPhone 16 Pro</option>
+          <option value="iphone_15_promax">05. Apple iPhone 15 Pro Max</option>
+          <option value="iphone_14_promax">06. Apple iPhone 14 Pro Max</option>
+          <option value="iphone_13_promax">07. Apple iPhone 13 Pro Max</option>
+          <option value="samsung_s26_ultra">08. Samsung Galaxy S26 Ultra</option>
+          <option value="samsung_s25_ultra">09. Samsung Galaxy S25 Ultra</option>
+          <option value="samsung_s24_ultra">10. Samsung Galaxy S24 Ultra</option>
+          <option value="samsung_z_fold6">11. Samsung Galaxy Z Fold6</option>
+          <option value="samsung_z_flip6">12. Samsung Galaxy Z Flip6</option>
+          <option value="tecno_phantom_vfold2">13. Tecno Phantom V Fold2 5G</option>
+          <option value="tecno_phantom_x4">14. Tecno Phantom X4 Pro Elite</option>
+          <option value="tecno_camon_30">15. Tecno Camon 30 Premier</option>
+          <option value="tecno_spark_20pro">16. Tecno Spark 20 Pro+</option>
+          <option value="infinix_gt_20_pro">17. Infinix GT 20 Pro Cyber</option>
+          <option value="infinix_zero_flip">18. Infinix Zero Flip Comms</option>
+          <option value="google_pixel_10pro">19. Google Pixel 10 Pro XL</option>
+          <option value="google_pixel_9pro">20. Google Pixel 9 Pro XL</option>
+          <option value="xiaomi_16_ultra">21. Xiaomi 16 Ultra Leica</option>
+          <option value="xiaomi_15_ultra">22. Xiaomi 15 Ultra Pro</option>
+          <option value="oneplus_14_pro">23. OnePlus 14 Pro Flagship</option>
+          <option value="oneplus_13">24. OnePlus 13 Retail Slate</option>
+          <option value="asus_rog_phone_10">25. ASUS ROG Phone 10 Pro Gaming</option>
+          <option value="sony_xperia_1_vii">26. Sony Xperia 1 VII Cinema</option>
+          <option value="huawei_mate_xt">27. Huawei Mate XT Tri-Fold Ultimate</option>
+          <option value="nothing_phone_3">28. Nothing Phone (3) Glyph</option>
+          <option value="motorola_razr_50">29. Motorola Razr 50 Ultra</option>
+          <option value="oppo_find_x8">30. Oppo Find X8 Pro Hasselblad</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="colorProfileSelector">Realistic Real-Life Product Color</label>
+        <select id="colorProfileSelector">
+          <option value="natural_titanium" selected>01. Natural Titanium (Apple Pro Finish)</option>
+          <option value="desert_titanium">02. Desert Titanium (Apple Bronze Dust)</option>
+          <option value="black_titanium">03. Black Titanium (Deep Obsidian Metal)</option>
+          <option value="white_titanium">04. White Titanium (Satin Ceramic Silver)</option>
+          <option value="blue_matte">05. Blue Matte (Anodized Deep Cobalt)</option>
+          <option value="deep_purple">06. Deep Purple (Imperial Royal Muted)</option>
+          <option value="sierra_blue">07. Sierra Blue (Soft Arctic Glaze)</option>
+          <option value="titanium_shield">08. Titanium Shield (Samsung Rugged Gray)</option>
+          <option value="armor_gray">09. Armor Gray (Sleek Space Tungsten)</option>
+          <option value="titanium_black">10. Titanium Black (Samsung Matte Night)</option>
+          <option value="book_open_silver">11. Book Open Silver (Liquid Aluminum)</option>
+          <option value="clamshell_yellow">12. Clamshell Yellow (Vintage Canary Lustre)</option>
+          <option value="eco_leather_sunset">13. Eco-Leather Sunset (Premium Terracotta)</option>
+          <option value="vintage_matte_gray">14. Vintage Matte Gray (Classic Graphite)</option>
+          <option value="emerald_aurora">15. Emerald Aurora (Metallic Jade Glass)</option>
+          <option value="cyber_mecha_slate">16. Cyber Mecha Slate (Futuristic Dark Iron)</option>
+          <option value="violet_haze">17. Violet Haze (Translucent Pastel Lilac)</option>
+          <option value="obsidian_core">18. Obsidian Core (Google Ultra Gloss Black)</option>
+          <option value="porcelain_glass">19. Porcelain Glass (Chalk Satin White)</option>
+          <option value="ceramic_weave_stone">20. Ceramic Weave Stone (Woven Matte Texture)</option>
+          <option value="emerald_glaze">21. Emerald Glaze (Polished Racing Green)</option>
+          <option value="obsidian_grain">22. Obsidian Grain (Textured Basalt Black)</option>
+          <option value="matrix_display_neon">23. Matrix Display Neon (Anodized Electro Navy)</option>
+          <option value="cinema_matte_black">24. Cinema Matte Black (Pro Aspect 21:9 Ash)</option>
+          <option value="zen_crimson">25. Zen Crimson (Luxury Burnished Maroon)</option>
+          <option value="glyph_transparent_silver">26. Glyph Transparent Silver (Monolithic Alloy)</option>
+          <option value="hot_pink_suede">27. Hot Pink Suede (Vibrant Fashion Satin)</option>
+          <option value="cosmic_silver">28. Cosmic Silver (Hasselblad Lunar Chrome)</option>
+          <option value="rosegold_blush">29. Rose Gold Blush (Elegant Warm Copper)</option>
+          <option value="champagne_gold">30. Champagne Gold (Luxury Metallic Brass)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <h3>Adaptive Shading Architecture</h3>
+        <div class="btn-row">
+          <button id="toggleRayTracing" class="toggle-btn active">RayTraced Specular</button>
+          <button id="toggleLumenGI" class="toggle-btn active">Lumen GI</button>
+        </div>
+        <div class="btn-row" style="margin-top: 8px;">
+          <button id="toggleNanite" class="toggle-btn">Nanite Micro-Wire</button>
+          <button id="togglePBR" class="toggle-btn active">Physical PBR</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>CAD Structural Deployment</h3>
+        <div class="slider-row">
+          <span>Explode Assembly</span>
+          <input type="range" id="explodeSlider" min="0" max="3.0" step="0.05" value="0">
+        </div>
+        <div class="btn-row">
+          <button id="toggleXray" class="toggle-btn">Toggle X-Ray</button>
+          <button id="toggleDimensions" class="toggle-btn">Dimensions</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>Engine Micro-PBR Material Customizer</label>
+        <div class="slider-row">
+          <span>Roughness</span>
+          <input type="range" id="customRoughness" min="0.0" max="1.0" step="0.01" value="0.15">
+        </div>
+        <div class="slider-row">
+          <span>Metalness</span>
+          <input type="range" id="customMetalness" min="0.0" max="1.0" step="0.01" value="0.95">
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>Custom Geometric Token Upload</label>
+        <div class="upload-area" onclick="document.getElementById('modelUploader').click()">
+          <span id="uploadStatusText" style="font-size:0.8rem; color:#60a5fa; font-weight: 600;">📥 Drop or Select File (.OBJ Mesh)</span>
+          <input type="file" id="modelUploader" accept=".obj" style="display:none;">
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>Active Structural Analytics</label>
+        <div id="deviceSpecs" class="hud-display">Initializing Real-time Compute Pipeline...</div>
+      </div>
+
+      <div class="control-group">
+        <label>Dynamic Emissive OS Runtime Canvas</label>
+        <textarea id="scriptBox" spellcheck="false">// Photorealistic Lumen Display Runtime Loop
+ctx.fillStyle = "#010409";
+ctx.fillRect(0, 0, w, h);
+
+// Matrix Grid Mapping
+ctx.strokeStyle = "rgba(6, 182, 212, 0.15)";
+ctx.lineWidth = 2;
+for(let i=0; i<w; i+=40) {
+  ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke();
+}
+for(let j=0; j<h; j+=40) {
+  ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(w, j); ctx.stroke();
+}
+
+// Live Status System Readout Configuration
+ctx.fillStyle = "#ffffff";
+ctx.font = "bold 26px sans-serif";
+ctx.fillText("5G NETWORK", 40, 55);
+ctx.fillText("99% BAT", w - 160, 55);
+
+// Running Operational Clock
+let timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+ctx.font = "bold 84px sans-serif";
+ctx.textAlign = "center";
+ctx.fillText(timeStr, w/2, 240);
+
+// Neon Ray Pulse Lines
+let grad = ctx.createLinearGradient(0, 0, w, h);
+grad.addColorStop(0, "#06b6d4"); grad.addColorStop(0.5, "#3b82f6"); grad.addColorStop(1, "#10b981");
+ctx.strokeStyle = grad;
+ctx.lineWidth = 5;
+ctx.beginPath();
+let pulseY = (time * 250) % h;
+ctx.moveTo(0, pulseY);
+ctx.lineTo(w, pulseY + Math.sin(time)*40);
+ctx.stroke();
+
+// Matrix Telemetry text
+ctx.fillStyle = "#06b6d4";
+ctx.font = "bold 44px monospace";
+ctx.shadowColor = "#06b6d4";
+ctx.shadowBlur = 20;
+ctx.fillText("VESMOS COMPUTE", w/2, h/2 - 40);
+ctx.font = "30px monospace";
+ctx.fillStyle = "#94a3b8";
+ctx.shadowBlur = 0;
+ctx.fillText("WEBGPU PIPELINE PRO", w/2, h/2 + 30);</textarea>
+        <button id="runScriptBtn" class="success" style="width:100%; margin-top:10px;">Compile Emissive Panel</button>
+      </div>
+
+      <div class="control-group">
+        <label>Universal Tokenized Asset Extraction</label>
+        <div class="btn-row">
+          <button id="exportGlbBtn">Export GLB</button>
+          <button id="exportObjBtn" class="secondary">Export OBJ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+    import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+    let scene, camera, renderer, deviceGroup = null, explodedGroup = null, dimensionsGroup = null, controls;
+    let screenTexture, screenMaterial, chassisMat, frameMat, internalMat, batteryMat, circuitMat, coilMat, portMat, lensGlassMat;
+    let lumenAmbientLight;
+    
+    let partsInventory = { chassis: [], screen: [], internals: [], components: [] };
+    let totalVertices = 0, totalFaces = 0;
+    let xrayActive = false, dimensionsActive = false;
+    let rayTracingActive = true, lumenGIActive = true, naniteActive = false, pbrActive = true;
+
+    // Web Bluetooth API Handles
+    let bluetoothDevice = null;
+    let rxCharacteristic = null;
+
+    const container = document.querySelector('.viewport-stage');
+    const htmlCanvas = document.getElementById('canvas3d');
+    const screenCanvas = document.getElementById('phone-screen-buffer');
+    const ctx = screenCanvas.getContext('2d');
+    
+    let compiledOSScript = null;
+    let renderPipelineType = "Initializing...";
+
+    const colorDatabase = {
+      natural_titanium: { hex: 0x8e8e8c, roughness: 0.15, metalness: 0.95 },
+      desert_titanium: { hex: 0xd2c2b3, roughness: 0.12, metalness: 0.98 },
+      black_titanium: { hex: 0x2e2f30, roughness: 0.15, metalness: 0.95 },
+      white_titanium: { hex: 0xf2f2f0, roughness: 0.18, metalness: 0.92 },
+      blue_matte: { hex: 0x2d3748, roughness: 0.22, metalness: 0.95 },
+      deep_purple: { hex: 0x3b334a, roughness: 0.08, metalness: 0.95 },
+      sierra_blue: { hex: 0xb0c4de, roughness: 0.05, metalness: 0.98 },
+      titanium_shield: { hex: 0x475569, roughness: 0.20, metalness: 0.95 },
+      armor_gray: { hex: 0x334155, roughness: 0.20, metalness: 0.95 },
+      titanium_black: { hex: 0x1e293b, roughness: 0.25, metalness: 0.92 },
+      book_open_silver: { hex: 0x64748b, roughness: 0.18, metalness: 0.92 },
+      clamshell_yellow: { hex: 0xfef08a, roughness: 0.10, metalness: 0.90 },
+      eco_leather_sunset: { hex: 0xc2410c, roughness: 0.85, metalness: 0.05 },
+      vintage_matte_gray: { hex: 0x1e293b, roughness: 0.70, metalness: 0.20 },
+      emerald_aurora: { hex: 0x065f46, roughness: 0.60, metalness: 0.30 },
+      cyber_mecha_slate: { hex: 0x111827, roughness: 0.10, metalness: 0.90 },
+      violet_haze: { hex: 0x4c1d95, roughness: 0.08, metalness: 0.95 },
+      obsidian_core: { hex: 0xf1f5f9, roughness: 0.11, metalness: 0.95 },
+      porcelain_glass: { hex: 0x475569, roughness: 0.11, metalness: 0.95 },
+      ceramic_weave_stone: { hex: 0x1c1917, roughness: 0.35, metalness: 0.70 },
+      emerald_glaze: { hex: 0x064e3b, roughness: 0.02, metalness: 0.99 },
+      obsidian_grain: { hex: 0xf8fafc, roughness: 0.05, metalness: 0.99 },
+      matrix_display_neon: { hex: 0x090d16, roughness: 0.15, metalness: 0.85 },
+      cinema_matte_black: { hex: 0x18181b, roughness: 0.25, metalness: 0.95 },
+      zen_crimson: { hex: 0x991b1b, roughness: 0.40, metalness: 0.60 },
+      glyph_transparent_silver: { hex: 0x334155, roughness: 0.02, metalness: 0.98 },
+      hot_pink_suede: { hex: 0xec4899, roughness: 0.50, metalness: 0.20 },
+      cosmic_silver: { hex: 0x0284c7, roughness: 0.08, metalness: 0.96 },
+      rosegold_blush: { hex: 0xe0a899, roughness: 0.14, metalness: 0.94 },
+      champagne_gold: { hex: 0xe5c158, roughness: 0.12, metalness: 0.97 }
+    };
+
+    const deviceDatabase = {
+      iphone_17_promax: { name: "Apple iPhone 17 Pro Max", w: 3.25, h: 6.75, d: 0.31, shape: "flat_round", notch: "island", cameraArr: "triple_pro", buttons: "action_capture" },
+      iphone_17_pro: { name: "Apple iPhone 17 Pro", w: 3.12, h: 5.89, d: 0.31, shape: "flat_round", notch: "island", cameraArr: "triple_pro", buttons: "action_capture" },
+      iphone_16_promax: { name: "Apple iPhone 16 Pro Max", w: 3.23, h: 6.69, d: 0.32, shape: "flat_round", notch: "island", cameraArr: "triple_pro", buttons: "action_capture" },
+      iphone_16_pro: { name: "Apple iPhone 16 Pro", w: 3.10, h: 5.82, d: 0.32, shape: "flat_round", notch: "island", cameraArr: "triple_pro", buttons: "action_capture" },
+      iphone_15_promax: { name: "Apple iPhone 15 Pro Max", w: 3.19, h: 6.29, d: 0.32, shape: "flat_round", notch: "island", cameraArr: "triple_pro", buttons: "action_only" },
+      iphone_14_promax: { name: "Apple iPhone 14 Pro Max", w: 3.21, h: 6.33, d: 0.31, shape: "sharp_box", notch: "island", cameraArr: "triple_pro", buttons: "classic" },
+      iphone_13_promax: { name: "Apple iPhone 13 Pro Max", w: 3.07, h: 6.33, d: 0.30, shape: "sharp_box", notch: "classic_notch", cameraArr: "triple_pro", buttons: "classic" },
+      samsung_s26_ultra: { name: "Samsung Galaxy S26 Ultra", w: 3.32, h: 6.82, d: 0.33, shape: "sharp_box", notch: "punch", cameraArr: "quad_inline", buttons: "samsung" },
+      samsung_s25_ultra: { name: "Samsung Galaxy S25 Ultra", w: 3.28, h: 6.78, d: 0.32, shape: "sharp_box", notch: "punch", cameraArr: "quad_inline", buttons: "samsung" },
+      samsung_s24_ultra: { name: "Samsung Galaxy S24 Ultra", w: 3.11, h: 6.40, d: 0.34, shape: "sharp_box", notch: "punch", cameraArr: "quad_inline", buttons: "samsung" },
+      samsung_z_fold6: { name: "Samsung Galaxy Z Fold6", w: 5.30, h: 6.04, d: 0.22, shape: "foldable", notch: "punch", cameraArr: "vertical_line", buttons: "samsung" },
+      samsung_z_flip6: { name: "Samsung Galaxy Z Flip6", w: 3.11, h: 6.51, d: 0.27, shape: "clamshell", notch: "punch", cameraArr: "dual_horizontal", buttons: "samsung" },
+      tecno_phantom_vfold2: { name: "Tecno Phantom V Fold2 5G", w: 5.80, h: 6.40, d: 0.25, shape: "foldable", notch: "punch", cameraArr: "large_circle", buttons: "classic" },
+      tecno_phantom_x4: { name: "Tecno Phantom X4 Pro Elite", w: 3.18, h: 6.60, d: 0.34, shape: "curved", notch: "punch", cameraArr: "large_circle", buttons: "classic" },
+      tecno_camon_30: { name: "Tecno Camon 30 Premier", w: 3.14, h: 6.48, d: 0.31, shape: "flat_round", notch: "punch", cameraArr: "large_circle", buttons: "classic" },
+      tecno_spark_20pro: { name: "Tecno Spark 20 Pro+", w: 3.12, h: 6.55, d: 0.29, shape: "curved", notch: "punch", cameraArr: "large_circle", buttons: "classic" },
+      infinix_gt_20_pro: { name: "Infinix GT 20 Pro Cyber", w: 3.15, h: 6.56, d: 0.32, shape: "cyber_mecha", notch: "punch", cameraArr: "cyber", buttons: "classic" },
+      infinix_zero_flip: { name: "Infinix Zero Flip Comms", w: 3.12, h: 6.58, d: 0.28, shape: "clamshell", notch: "punch", cameraArr: "vertical_line", buttons: "classic" },
+      google_pixel_10pro: { name: "Google Pixel 10 Pro XL", w: 3.22, h: 6.65, d: 0.33, shape: "flat_round", notch: "punch", cameraArr: "bar", buttons: "google" },
+      google_pixel_9pro: { name: "Google Pixel 9 Pro XL", w: 3.20, h: 6.41, d: 0.33, shape: "flat_round", notch: "punch", cameraArr: "bar", buttons: "google" },
+      xiaomi_16_ultra: { name: "Xiaomi 16 Ultra Leica", w: 3.24, h: 6.70, d: 0.36, shape: "curved", notch: "punch", cameraArr: "large_circle", buttons: "classic" },
+      xiaomi_15_ultra: { name: "Xiaomi 15 Ultra Pro", w: 3.23, h: 6.67, d: 0.36, shape: "curved", notch: "punch", cameraArr: "large_circle", buttons: "classic" },
+      oneplus_14_pro: { name: "OnePlus 14 Pro Flagship", w: 3.20, h: 6.68, d: 0.33, shape: "curved", notch: "punch", cameraArr: "offset_circle", buttons: "classic" },
+      oneplus_13: { name: "OnePlus 13 Retail Slate", w: 3.18, h: 6.47, d: 0.33, shape: "curved", notch: "punch", cameraArr: "offset_circle", buttons: "classic" },
+      asus_rog_phone_10: { name: "ASUS ROG Phone 10 Pro Gaming", w: 3.32, h: 6.90, d: 0.41, shape: "cyber_mecha", notch: "none", cameraArr: "cyber", buttons: "classic" },
+      sony_xperia_1_vii: { name: "Sony Xperia 1 VII Cinema", w: 2.80, h: 6.95, d: 0.32, shape: "sharp_box", notch: "none", cameraArr: "vertical_line", buttons: "classic" },
+      huawei_mate_xt: { name: "Huawei Mate XT Tri-Fold Ultimate", w: 8.40, h: 6.50, d: 0.20, shape: "trifold", notch: "punch", cameraArr: "octagon", buttons: "classic" },
+      nothing_phone_3: { name: "Nothing Phone (3) Glyph", w: 3.21, h: 6.62, d: 0.33, shape: "transparent", notch: "punch", cameraArr: "vertical_line", buttons: "classic" },
+      motorola_razr_50: { name: "Motorola Razr 50 Ultra", w: 3.20, h: 6.70, d: 0.29, shape: "clamshell", notch: "punch", cameraArr: "dual_horizontal", buttons: "classic" },
+      oppo_find_x8: { name: "Oppo Find X8 Pro Hasselblad", w: 3.21, h: 6.56, d: 0.32, shape: "flat_round", notch: "punch", cameraArr: "large_circle", buttons: "classic" }
+    };
+
+    function generatePhotorealisticEnvMap() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512; canvas.height = 256;
+      const c = canvas.getContext('2d');
+      c.fillStyle = '#02040a'; c.fillRect(0,0,512,256);
+      let g1 = c.createRadialGradient(120,60,5,120,60,90);
+      g1.addColorStop(0, '#ffffff'); g1.addColorStop(1, 'rgba(37,99,235,0)');
+      c.fillStyle = g1; c.fillRect(0,0,512,256);
+      let g2 = c.createRadialGradient(400,180,10,400,180,140);
+      g2.addColorStop(0, '#60a5fa'); g2.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g2; c.fillRect(0,0,512,256);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.mapping = THREE.EquirectangularReflectionMapping;
+      return tex;
+    }
+
+    async function initQuantumEngine() {
+      scene = new THREE.Scene();
+      const lumenEnv = generatePhotorealisticEnvMap();
+      scene.environment = lumenEnv;
+      scene.background = new THREE.Color(0x020408);
+
+      camera = new THREE.PerspectiveCamera(38, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.set(5, 3, 10);
+
+      // WebGPU Engine Initialization with Automatic WebGL Fallback Context Structure
+      try {
+        if (!navigator.gpu) {
+          throw new Error("WebGPU API array wrapper is undefined on this browser instance.");
+        }
+        renderer = new THREE.WebGPURenderer({ canvas: htmlCanvas, antialias: true, alpha: false, powerPreference: "high-performance" });
+        await renderer.init();
+        renderPipelineType = "WebGPU Pure Compute Context";
+      } catch (gpuError) {
+        console.warn("WebGPU setup failed; initializing standard hybrid fallback", gpuError);
+        renderer = new THREE.WebGLRenderer({ canvas: htmlCanvas, antialias: true, alpha: false });
+        renderPipelineType = "WebGL2 Hybrid Native Fallback";
+      }
+
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.4;
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxDistance = 25;
+      controls.minDistance = 4;
+
+      const keyLight = new THREE.DirectionalLight(0xffffff, 4.0);
+      keyLight.position.set(6, 12, 8);
+      scene.add(keyLight);
+
+      const bounceLight = new THREE.DirectionalLight(0x93c5fd, 2.0);
+      bounceLight.position.set(-6, -4, 6);
+      scene.add(bounceLight);
+
+      const rimLight = new THREE.DirectionalLight(0xffffff, 3.5);
+      rimLight.position.set(0, 4, -10);
+      scene.add(rimLight);
+
+      lumenAmbientLight = new THREE.AmbientLight(0x0a1530, 1.2);
+      scene.add(lumenAmbientLight);
+
+      screenTexture = new THREE.CanvasTexture(screenCanvas);
+      screenTexture.minFilter = THREE.LinearFilter;
+      
+      screenMaterial = new THREE.MeshPhysicalNodeMaterial({
+        map: screenTexture,
+        emissive: new THREE.Color(0xffffff),
+        roughness: 0.04,
+        metalness: 0.0,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.01
+      });
+
+      chassisMat = new THREE.MeshPhysicalNodeMaterial();
+      frameMat = new THREE.MeshPhysicalNodeMaterial();
+      internalMat = new THREE.MeshStandardNodeMaterial({ color: 0x0d1117 });
+      batteryMat = new THREE.MeshStandardNodeMaterial({ color: 0x059669 });
+      circuitMat = new THREE.MeshStandardNodeMaterial({ color: 0x1e3a8a });
+      coilMat = new THREE.MeshStandardNodeMaterial({ color: 0xb45309 });
+      portMat = new THREE.MeshStandardNodeMaterial({ color: 0x07090e, roughness: 0.6 });
+      lensGlassMat = new THREE.MeshPhysicalNodeMaterial({ color: 0x111111, roughness: 0.0, metalness: 0.9, clearcoat: 1.0 });
+
+      compileUserOSScript();
+      buildSelectedProceduralDevice("iphone_16_promax");
+      window.addEventListener('resize', resizeQuantumViewport);
+      
+      hardwareRenderClockLoop();
+      setupUploadEngine();
+      setupInterfaceHandlers();
+      setupBluetoothCore();
+
+      document.getElementById('genreDisplayScreenTag').textContent = `CAD PIPELINE: ${renderPipelineType.toUpperCase()}`;
+    }
+
+    function buildSelectedProceduralDevice(targetKey) {
+      if(deviceGroup) scene.remove(deviceGroup);
+      
+      deviceGroup = new THREE.Group();
+      explodedGroup = new THREE.Group();
+      dimensionsGroup = new THREE.Group();
+      deviceGroup.add(explodedGroup);
+      deviceGroup.add(dimensionsGroup);
+
+      partsInventory = { chassis: [], screen: [], internals: [], components: [] };
+      totalVertices = 0; totalFaces = 0;
+
+      const cfg = deviceDatabase[targetKey];
+      const activeColorKey = document.getElementById('colorProfileSelector').value;
+      const colorCfg = colorDatabase[activeColorKey];
+
+      document.getElementById('customRoughness').value = colorCfg.roughness;
+      document.getElementById('customMetalness').value = colorCfg.metalness;
+
+      updateCustomEngineMaterials();
+      
+      const maskMat = new THREE.MeshBasicNodeMaterial({ color: 0x010103 });
+      let w = cfg.w, h = cfg.h, d = cfg.d;
+      if (cfg.shape === "foldable") w = cfg.w * 0.48;
+      if (cfg.shape === "trifold") w = cfg.w * 0.32;
+      if (cfg.shape === "clamshell") h = cfg.h * 0.49;
+
+      let bodyGeom = new THREE.BoxGeometry(w, h, d);
+      let chassisMesh = new THREE.Mesh(bodyGeom, chassisMat);
+      explodedGroup.add(chassisMesh);
+      partsInventory.chassis.push(chassisMesh);
+
+      const bandGeo = new THREE.BoxGeometry(w * 1.002, 0.04, d * 1.002);
+      const bandMat = new THREE.MeshBasicNodeMaterial({ color: 0x1e293b });
+      const bandT = new THREE.Mesh(bandGeo, bandMat); bandT.position.y = h * 0.35;
+      const bandB = bandT.clone(); bandB.position.y = -h * 0.35;
+      chassisMesh.add(bandT, bandB);
+
+      const portGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.15, 16);
+      portGeom.rotateZ(Math.PI / 2);
+      const usbCPort = new THREE.Mesh(portGeom, portMat);
+      usbCPort.position.set(0, -h/2, 0);
+      chassisMesh.add(usbCPort);
+
+      for (let i = -2; i <= 2; i++) {
+        if (i === 0) continue;
+        const speakerGeom = new THREE.CylinderGeometry(0.012, 0.012, 0.02, 8);
+        speakerGeom.rotateX(Math.PI / 2);
+        const grillHole = new THREE.Mesh(speakerGeom, portMat);
+        grillHole.position.set(i * 0.12, -h/2, 0);
+        chassisMesh.add(grillHole);
+      }
+
+      const bezelMesh = new THREE.Mesh(new THREE.BoxGeometry(w * 0.97, h * 0.98, 0.02), new THREE.MeshStandardNodeMaterial({ color: 0x050508, roughness: 0.1 }));
+      const screenGeometry = new THREE.BoxGeometry(w * 0.95, h * 0.96, 0.022);
+      const screenMesh = new THREE.Mesh(screenGeometry, screenMaterial);
+      bezelMesh.add(screenMesh);
+      explodedGroup.add(bezelMesh);
+      partsInventory.screen.push(bezelMesh);
+
+      if (cfg.notch === "island") {
+        const islandGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.24, 24);
+        islandGeo.rotateZ(Math.PI / 2);
+        const islandMesh = new THREE.Mesh(islandGeo, maskMat);
+        islandMesh.position.set(0, h * 0.42, 0.012);
+        bezelMesh.add(islandMesh);
+      } else if (cfg.notch === "punch") {
+        const punchGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.02, 24);
+        punchGeo.rotateX(Math.PI / 2);
+        const punchMesh = new THREE.Mesh(punchGeo, maskMat);
+        punchMesh.position.set(0, h * 0.44, 0.012);
+        bezelMesh.add(punchMesh);
+      } else if (cfg.notch === "classic_notch") {
+        const notchMesh = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.07, 0.02), maskMat);
+        notchMesh.position.set(0, h * 0.45, 0.012);
+        bezelMesh.add(notchMesh);
+      }
+
+      const internalsGroup = new THREE.Group();
+      
+      const batteryCore = new THREE.Mesh(new THREE.BoxGeometry(w * 0.46, h * 0.62, d * 0.5), batteryMat);
+      batteryCore.position.set(-w * 0.16, -h * 0.04, 0);
+      internalsGroup.add(batteryCore);
+
+      const logicBoard = new THREE.Mesh(new THREE.BoxGeometry(w * 0.36, h * 0.32, d * 0.4), circuitMat);
+      logicBoard.position.set(w * 0.2, h * 0.22, 0);
+      internalsGroup.add(logicBoard);
+
+      const magneticCoil = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.18, w * 0.18, d * 0.15, 32), coilMat);
+      magneticCoil.rotateX(Math.PI / 2);
+      internalsGroup.add(magneticCoil);
+
+      explodedGroup.add(internalsGroup);
+      partsInventory.internals.push(internalsGroup);
+
+      const componentsGroup = new THREE.Group();
+
+      if (cfg.buttons.includes("classic") || cfg.buttons.includes("action") || cfg.buttons.includes("capture")) {
+        const volUp = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.32, 0.04), frameMat); volUp.position.set(-w/2, h*0.18, 0); componentsGroup.add(volUp);
+        const volDown = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.32, 0.04), frameMat); volDown.position.set(-w/2, h*0.06, 0); componentsGroup.add(volDown);
+        const powerB = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.32, 0.04), frameMat); powerB.position.set(w/2, h*0.12, 0); componentsGroup.add(powerB);
+        
+        if (cfg.buttons.includes("capture")) {
+          const captureMech = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.22, 0.02), frameMat);
+          captureMech.position.set(w/2, -h*0.22, 0);
+          componentsGroup.add(captureMech);
+        }
+      } else {
+        const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.32, 0.04), frameMat); p1.position.set(w/2, h*0.2, 0); componentsGroup.add(p1);
+        const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.55, 0.04), frameMat); p2.position.set(w/2, h*0.04, 0); componentsGroup.add(p2);
+      }
+
+      if (cfg.cameraArr === "triple_pro") {
+        const islandPlat = new THREE.Mesh(new THREE.BoxGeometry(w * 0.46, w * 0.46, 0.04), frameMat);
+        islandPlat.position.set(-w * 0.18, h * 0.24, -d / 2 - 0.02);
+        componentsGroup.add(islandPlat);
+
+        const nodes = [[-0.26, 0.30], [-0.26, 0.18], [-0.10, 0.24]];
+        nodes.forEach(node => {
+          const trim = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.02, 32), frameMat);
+          trim.rotateX(Math.PI/2); trim.position.set(w * node[0], h * node[1], -d/2 - 0.03);
+          componentsGroup.add(trim);
+          const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.02, 32), lensGlassMat);
+          lens.rotateX(Math.PI/2); lens.position.set(w * node[0], h * node[1], -d/2 - 0.035);
+          componentsGroup.add(lens);
+        });
+      } 
+      else if (cfg.cameraArr === "quad_inline" || cfg.cameraArr === "vertical_line") {
+        const linesCount = cfg.cameraArr === "quad_inline" ? 4 : 3;
+        for(let i=0; i<linesCount; i++) {
+          const trim = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.02, 32), frameMat);
+          trim.rotateX(Math.PI/2); trim.position.set(-w * 0.28, (h * 0.34) - (i * 0.18), -d / 2 - 0.02);
+          componentsGroup.add(trim);
+          const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.02, 32), lensGlassMat);
+          lens.rotateX(Math.PI/2); lens.position.set(-w * 0.28, (h * 0.34) - (i * 0.18), -d / 2 - 0.025);
+          componentsGroup.add(lens);
+        }
+      } 
+      else if (cfg.cameraArr === "bar") {
+        const visor = new THREE.Mesh(new THREE.BoxGeometry(w * 0.99, h * 0.15, 0.06), frameMat);
+        visor.position.set(0, h * 0.28, -d / 2 - 0.03);
+        componentsGroup.add(visor);
+
+        for(let i = -1; i <= 1; i++) {
+          const l = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.02, 32), lensGlassMat); 
+          l.rotateX(Math.PI/2); l.position.set(i * 0.36, h * 0.28, -d / 2 - 0.05); componentsGroup.add(l);
+        }
+      } 
+      else if (cfg.cameraArr === "large_circle" || cfg.cameraArr === "offset_circle" || cfg.cameraArr === "octagon") {
+        let smoothValue = cfg.cameraArr === "octagon" ? 8 : 48;
+        let ringGeo = new THREE.CylinderGeometry(w * 0.26, w * 0.26, 0.05, smoothValue); ringGeo.rotateX(Math.PI/2);
+        const moduleBase = new THREE.Mesh(ringGeo, frameMat);
+        let coordX = (cfg.cameraArr === "offset_circle") ? -w * 0.15 : 0;
+        moduleBase.position.set(coordX, h * 0.24, -d / 2 - 0.02);
+        componentsGroup.add(moduleBase);
+
+        const quadPoints = [[-0.1, 0.1], [0.1, 0.1], [-0.1, -0.1], [0.1, -0.1]];
+        quadPoints.forEach(qp => {
+          const l = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 32), lensGlassMat); 
+          l.rotateX(Math.PI/2); l.position.set(coordX + qp[0], (h * 0.24) + qp[1], -d / 2 - 0.04); componentsGroup.add(l);
+        });
+      }
+
+      explodedGroup.add(componentsGroup);
+      partsInventory.components.push(componentsGroup);
+
+      deviceGroup.traverse(child => {
+        if(child.isMesh && child.geometry) {
+          const position = child.geometry.attributes.position;
+          if(position) {
+            totalVertices += position.count;
+            totalFaces += position.count / 3;
+          }
+        }
+      });
+
+      buildCADBoundingDimensions(w, h, d);
+      scene.add(deviceGroup);
+      
+      updateExplodedAssemblyOffsets();
+      updateDiagnosticsPanel(cfg, w, h, d);
+    }
+
+    function buildCADBoundingDimensions(w, h, d) {
+      const designLineMat = new THREE.LineBasicNodeMaterial({ color: 0x06b6d4 });
+      
+      const heightGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(w/2 + 0.5, -h/2, 0),
+        new THREE.Vector3(w/2 + 0.5, h/2, 0)
+      ]);
+      const hLine = new THREE.Line(heightGeometry, designLineMat);
+      dimensionsGroup.add(hLine);
+      
+      const widthGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-w/2, h/2 + 0.5, 0),
+        new THREE.Vector3(w/2, h/2 + 0.5, 0)
+      ]);
+      const wLine = new THREE.Line(widthGeometry, designLineMat);
+      dimensionsGroup.add(wLine);
+      
+      dimensionsGroup.visible = dimensionsActive;
+    }
+
+    function updateExplodedAssemblyOffsets() {
+      const offsetFactor = parseFloat(document.getElementById('explodeSlider').value);
+      partsInventory.screen.forEach(m => m.position.z = offsetFactor * 0.9 + (deviceDatabase[document.getElementById('deviceSelector').value].d / 2));
+      partsInventory.internals.forEach(m => m.position.z = offsetFactor * 0.15);
+      partsInventory.components.forEach(m => m.position.z = -offsetFactor * 0.5);
+      partsInventory.chassis.forEach(m => m.position.z = -offsetFactor * 0.2);
+    }
+
+    function updateCustomEngineMaterials() {
+      const activeColorKey = document.getElementById('colorProfileSelector').value;
+      const currentSelectionBase = colorDatabase[activeColorKey];
+
+      const rVal = parseFloat(document.getElementById('customRoughness').value);
+      const mVal = parseFloat(document.getElementById('customMetalness').value);
+
+      if (pbrActive) {
+        chassisMat.color.setHex(currentSelectionBase.hex);
+        chassisMat.roughness = rVal;
+        chassisMat.metalness = mVal;
+        chassisMat.clearcoat = rayTracingActive ? 0.9 : 0.2;
+
+        frameMat.color.setHex(currentSelectionBase.hex);
+        frameMat.roughness = Math.max(0.02, rVal - 0.04);
+        frameMat.metalness = Math.min(1.0, mVal + 0.02);
+      } else {
+        chassisMat.color.setHex(currentSelectionBase.hex); chassisMat.roughness = 0.9; chassisMat.metalness = 0.0;
+        frameMat.color.setHex(currentSelectionBase.hex); frameMat.roughness = 0.9; frameMat.metalness = 0.0;
+      }
+    }
+
+    function updateDiagnosticsPanel(cfg, w, h, d) {
+      const displayVertices = naniteActive ? totalVertices * 18 : totalVertices;
+      const displayFaces = naniteActive ? totalFaces * 18 : totalFaces;
+      const volumeCubicCM = (w * 10 * h * 10 * d * 10).toFixed(1);
+
+      document.getElementById('telemetryOverlay').innerHTML = `
+        <strong>[DIAGNOSTIC MATRIX]</strong><br>
+        Vertices: ${displayVertices.toLocaleString()}<br/>
+        Faces: ${displayFaces.toLocaleString()}<br/>
+        Displacement Vol: ${volumeCubicCM} cm³
+      `;
+
+      document.getElementById('deviceSpecs').innerHTML = `
+        <strong>PIPELINE:</strong> ${renderPipelineType}<br/>
+        <strong>RT SPECULAR:</strong> ${rayTracingActive ? "ON (ACCELERATED)" : "OFF"}<br/>
+        <strong>LUMEN GI:</strong> ${lumenGIActive ? "DYNAMIC CORE" : "STATIONARY"}<br/>
+        <strong>NANITE MESH:</strong> ${naniteActive ? "VIRTUALIZED CLUSTER" : "STANDARD"}<br/>
+        <strong>PHYSICAL PROFILE:</strong> ${(w*25.4).toFixed(1)}mm x ${(h*25.4).toFixed(1)}mm
+      `;
+    }
+
+    /* =========================================================================
+       UNIVERSAL BLUETOOTH CORE MODULE IMPLEMENTATION
+       ========================================================================= */
+    function setupBluetoothCore() {
+      const btnPair = document.getElementById('btnPairBT');
+      const btnDisconnect = document.getElementById('btnDisconnectBT');
+      const labelStatus = document.getElementById('btStatus');
+
+      btnPair.addEventListener('click', async () => {
+        if (!navigator.bluetooth) {
+          labelStatus.textContent = "Unsupported Browser";
+          labelStatus.style.color = "var(--danger)";
+          return;
+        }
+
+        try {
+          labelStatus.textContent = "Scanning Node...";
+          labelStatus.style.color = "var(--warning)";
+
+          // Requests any nearby device advertising common serialization services
+          bluetoothDevice = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb', '0000180d-0000-1000-8000-00805f9b34fb']
+          });
+
+          labelStatus.textContent = "Linking GATT...";
+          const server = await bluetoothDevice.gpgServer ? await bluetoothDevice.gpgServer.connect() : await bluetoothDevice.gatt.connect();
+          
+          labelStatus.textContent = "Querying Subsystems...";
+          const services = await server.getPrimaryServices();
+          
+          if(services.length > 0) {
+            const characteristics = await services[0].getCharacteristics();
+            if(characteristics.length > 0) {
+              rxCharacteristic = characteristics[0];
+              // Enable tracking updates if readable notification hooks exist
+              if(rxCharacteristic.properties.notify) {
+                await rxCharacteristic.startNotifications();
+                rxCharacteristic.addEventListener('characteristicvaluechanged', parseIncomingBluetoothPacket);
+              }
+            }
+          }
+
+          labelStatus.textContent = `Connected (${bluetoothDevice.name || 'Generic Node'})`;
+          labelStatus.style.color = "var(--success)";
+          document.getElementById('genreDisplayScreenTag').textContent = "QUANTUM WIRELESS COUPLING LINK: OK";
+
+          bluetoothDevice.addEventListener('gattserverdisconnected', () => {
+            labelStatus.textContent = "Offline (Link Dropped)";
+            labelStatus.style.color = "#94a3b8";
+          });
+
+        } catch (btErr) {
+          console.error("Bluetooth pairing cycle faulted:", btErr);
+          labelStatus.textContent = "Pairing Blocked";
+          labelStatus.style.color = "var(--danger)";
+        }
+      });
+
+      btnDisconnect.addEventListener('click', () => {
+        if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+          bluetoothDevice.gatt.disconnect();
+          labelStatus.textContent = "Offline (Ready)";
+          labelStatus.style.color = "#94a3b8";
+        }
+      });
+    }
+
+    /**
+     * Parses hardware data packets arriving over the wireless layer
+     */
+    function parseIncomingBluetoothPacket(event) {
+      const bufferValue = event.target.value;
+      const dataView = new DataView(bufferValue.buffer);
+      
+      // Dynamic mapping parser: processes orientation fields safely from transmission frames
+      if(bufferValue.byteLength >= 6) {
+        const xRotInt = dataView.getInt16(0, true);
+        const yRotInt = dataView.getInt16(2, true);
+        const zRotInt = dataView.getInt16(4, true);
+
+        if(deviceGroup) {
+          deviceGroup.rotation.x = (xRotInt / 32768.0) * Math.PI;
+          deviceGroup.rotation.y = (yRotInt / 32768.0) * Math.PI;
+          deviceGroup.rotation.z = (zRotInt / 32768.0) * Math.PI;
+        }
+      }
+    }
+
+    function setupInterfaceHandlers() {
+      document.getElementById('deviceSelector').addEventListener('change', (e) => {
+        buildSelectedProceduralDevice(e.target.value);
+        document.getElementById('genreDisplayScreenTag').textContent = `CAD PIPELINE ACTIVE: ${e.target.options[e.target.selectedIndex].text.toUpperCase().substring(4)}`;
+      });
+
+      document.getElementById('colorProfileSelector').addEventListener('change', () => {
+        const activeColorKey = document.getElementById('colorProfileSelector').value;
+        const colorCfg = colorDatabase[activeColorKey];
+        document.getElementById('customRoughness').value = colorCfg.roughness;
+        document.getElementById('customMetalness').value = colorCfg.metalness;
+        updateCustomEngineMaterials();
+        buildSelectedProceduralDevice(document.getElementById('deviceSelector').value);
+      });
+
+      document.getElementById('explodeSlider').addEventListener('input', updateExplodedAssemblyOffsets);
+
+      document.getElementById('toggleXray').addEventListener('click', (e) => {
+        xrayActive = !xrayActive;
+        e.target.classList.toggle('active', xrayActive);
+        
+        deviceGroup.traverse(child => {
+          if (child.isMesh && child.material && child.material !== screenMaterial) {
+            child.material.transparent = xrayActive;
+            child.material.opacity = xrayActive ? 0.25 : 1.0;
+            child.material.wireframe = xrayActive;
+          }
+        });
+      });
+
+      document.getElementById('toggleDimensions').addEventListener('click', (e) => {
+        dimensionsActive = !dimensionsActive;
+        e.target.classList.toggle('active', dimensionsActive);
+        dimensionsGroup.visible = dimensionsActive;
+      });
+
+      document.getElementById('toggleRayTracing').addEventListener('click', (e) => {
+        rayTracingActive = !rayTracingActive;
+        e.target.classList.toggle('active', rayTracingActive);
+        updateCustomEngineMaterials();
+        updateDiagnosticsPanel(deviceDatabase[document.getElementById('deviceSelector').value], deviceDatabase[document.getElementById('deviceSelector').value].w, deviceDatabase[document.getElementById('deviceSelector').value].h, deviceDatabase[document.getElementById('deviceSelector').value].d);
+      });
+
+      document.getElementById('toggleLumenGI').addEventListener('click', (e) => {
+        lumenGIActive = !lumenGIActive;
+        e.target.classList.toggle('active', lumenGIActive);
+        lumenAmbientLight.intensity = lumenGIActive ? 1.2 : 0.2;
+        updateCustomEngineMaterials();
+        updateDiagnosticsPanel(deviceDatabase[document.getElementById('deviceSelector').value], deviceDatabase[document.getElementById('deviceSelector').value].w, deviceDatabase[document.getElementById('deviceSelector').value].h, deviceDatabase[document.getElementById('deviceSelector').value].d);
+      });
+
+      document.getElementById('toggleNanite').addEventListener('click', (e) => {
+        naniteActive = !naniteActive;
+        e.target.classList.toggle('active', naniteActive);
+        
+        deviceGroup.traverse(child => {
+          if (child.isMesh && child.material && child.material !== screenMaterial) {
+            child.material.wireframe = naniteActive;
+          }
+        });
+        updateDiagnosticsPanel(deviceDatabase[document.getElementById('deviceSelector').value], deviceDatabase[document.getElementById('deviceSelector').value].w, deviceDatabase[document.getElementById('deviceSelector').value].h, deviceDatabase[document.getElementById('deviceSelector').value].d);
+      });
+
+      document.getElementById('togglePBR').addEventListener('click', (e) => {
+        pbrActive = !pbrActive;
+        e.target.classList.toggle('active', pbrActive);
+        updateCustomEngineMaterials();
+      });
+
+      document.getElementById('customRoughness').addEventListener('input', updateCustomEngineMaterials);
+      document.getElementById('customMetalness').addEventListener('input', updateCustomEngineMaterials);
+      document.getElementById('runScriptBtn').addEventListener('click', compileUserOSScript);
+    }
+
+    function setupUploadEngine() {
+      const uploader = document.getElementById('modelUploader');
+      uploader.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        document.getElementById('uploadStatusText').textContent = `⚡ Processing Structural Matrix...`;
+        const reader = new FileReader();
+        reader.onload = function(event) { parseAndInjectCustomObj(event.target.result); };
+        reader.readAsText(file);
+      });
+    }
+
+    function parseAndInjectCustomObj(text) {
+      if(deviceGroup) scene.remove(deviceGroup);
+      deviceGroup = new THREE.Group();
+      const loader = new OBJLoader();
+      try {
+        const objResult = loader.parse(text);
+        const highPrecisionMat = new THREE.MeshPhysicalNodeMaterial({ color: 0x2563eb, metalness: 0.9, roughness: 0.15 });
+        objResult.traverse((child) => {
+          if (child.isMesh) child.material = highPrecisionMat;
+        });
+        const box = new THREE.Box3().setFromObject(objResult);
+        const center = box.getCenter(new THREE.Vector3());
+        objResult.position.sub(center);
+        deviceGroup.add(objResult);
+        scene.add(deviceGroup);
+        document.getElementById('uploadStatusText').textContent = `✅ Mesh Ingested`;
+      } catch (err) {
+        document.getElementById('uploadStatusText').textContent = `❌ Format Error`;
+      }
+    }
+
+    function compileUserOSScript() {
+      const codeRaw = document.getElementById('scriptBox').value;
+      try { compiledOSScript = new Function('ctx', 'w', 'h', 'time', codeRaw); } catch (err) {
+        compiledOSScript = (ctx, w, h) => { ctx.fillStyle = '#02040a'; ctx.fillRect(0,0,w,h); };
+      }
+    }
+
+    function hardwareRenderClockLoop() {
+      requestAnimationFrame(hardwareRenderClockLoop);
+      const w = screenCanvas.width, h = screenCanvas.height, elapsed = performance.now() * 0.001;
+      
+      // Auto rotation occurs ONLY if bluetooth controller loop is currently uncoupled
+      if(deviceGroup && controls.state == -1 && (!bluetoothDevice || !bluetoothDevice.gatt.connected)) {
+        deviceGroup.rotation.y = elapsed * 0.25;
+        deviceGroup.rotation.x = Math.sin(elapsed * 0.1) * 0.05;
+      }
+      
+      if (rayTracingActive && deviceGroup) {
+        const pseudoReflectionFactor = Math.sin(elapsed) * 0.1;
+        chassisMat.clearcoatRoughness = Math.abs(pseudoReflectionFactor);
+      }
+      
+      if (compiledOSScript) {
+        try { compiledOSScript(ctx, w, h, elapsed); } catch(e){}
+      }
+      
+      screenTexture.needsUpdate = true;
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    function resizeQuantumViewport() {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    }
+
+    document.getElementById('exportGlbBtn').addEventListener('click', () => {
+      if(!deviceGroup) return;
+      document.getElementById('genreDisplayScreenTag').textContent = `EXPORT STATE: GENERATING CAD PAYLOAD`;
+
+      const exporter = new GLTFExporter();
+      exporter.parse(scene, function (gltf) {
+        const blob = new Blob([JSON.stringify(gltf)], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `vesmos_cad_custom_blueprint.gltf`;
+        link.click();
+        document.getElementById('genreDisplayScreenTag').textContent = `EXPORT STATE: GLB COMPACT SUCCESS`;
+      }, (err) => console.error(err), { binary: false });
+    });
+
+    document.getElementById('exportObjBtn').addEventListener('click', () => {
+      let output = "# Vesmos Hardware CAD Mesh Export Variant\n";
+      deviceGroup.traverse(function (child) {
+        if (child.isMesh && child.geometry) {
+          const geo = child.geometry.clone();
+          if(!geo.attributes.position) return;
+          const pos = geo.attributes.position;
+          for (let i = 0; i < pos.count; i++) {
+            output += `v ${pos.getX(i).toFixed(4)} ${pos.getY(i).toFixed(4)} ${pos.getZ(i).toFixed(4)}\n`;
+          }
+        }
+      });
+      const blob = new Blob([output], { type: 'text/plain' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'vesmos_hardware_blueprint.obj';
+      link.click();
+    });
+
+    initQuantumEngine();
+    setTimeout(resizeQuantumViewport, 200);
+  </script>
+</body>
+</html>
